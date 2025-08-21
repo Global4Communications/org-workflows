@@ -17,8 +17,11 @@ jobs:
       - name: Check for changed PHP files
         id: php_files_changed
         run: |
-          CHANGED_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }} HEAD | grep php | wc -l)
-          echo "changed=$CHANGED_FILES" >> $GITHUB_OUTPUT
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }} HEAD | grep php)
+          CHANGED_COUNT=$(echo "$CHANGED_FILES" | wc -l)
+          echo "changed=$CHANGED_COUNT" >> $GITHUB_OUTPUT
+          echo "Changed PHP files:"
+          echo "$CHANGED_FILES"
 
   phpcs:
     name: PHP_CodeSniffer
