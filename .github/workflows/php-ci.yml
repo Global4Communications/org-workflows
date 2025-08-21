@@ -116,7 +116,7 @@ jobs:
 
   phpstan:
     name: PHPStan
-    needs: [check_php_files_changed, check_config_files]
+    needs: [check_php_files_changed, check_config_files, composer_install]
     runs-on: ubuntu-latest
     if: needs.check_php_files_changed.outputs.changed != '0' && needs.check_config_files.outputs.phpstan_neon_exists == '1'
     env:
