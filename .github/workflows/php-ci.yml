@@ -80,8 +80,6 @@ jobs:
     if: needs.check_php_files_changed.outputs.changed != '0' && needs.check_config_files.outputs.phpstan_neon_exists == '1'
     env:
       MANDRILL_APIKEY: "RANDOM_API_KEY"
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      COMPOSER_AUTH_JSON: '{"github-oauth": {"github.com": "${{ secrets.GITHUB_TOKEN }}"}}'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -102,6 +100,9 @@ jobs:
           tools: phpstan:1.12, composer, cs2pr
           extensions: mbstring, json, dom
       - name: Install dependencies
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMPOSER_AUTH_JSON: '{"github-oauth": {"github.com": "${{ secrets.GITHUB_TOKEN }}"}}'
         run: |
           composer config --global github-protocols https
           composer install --prefer-dist --no-interaction --no-progress
