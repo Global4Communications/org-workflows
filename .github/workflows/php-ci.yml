@@ -28,6 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       phpcs_xml_exists: ${{ steps.check.outputs.phpcs_xml_exists }}
+      phpstan_neon_exists: ${{ steps.check.outputs.phpstan_neon_exists }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -40,6 +41,16 @@ jobs:
           else
             echo "phpcs.xml not found."
             echo "phpcs_xml_exists=0" >> $GITHUB_OUTPUT
+          fi
+      - name: Check for phpstan.neon
+        id: check
+        run: |
+          if [ -f "phpstan.neon" ]; then
+            echo "phpstan.neon found."
+            echo "phpstan_neon_exists=1" >> $GITHUB_OUTPUT
+          else
+            echo "phpstan.neon not found."
+            echo "phpstan_neon_exists=0" >> $GITHUB_OUTPUT
           fi
 
   phpcs:
@@ -59,3 +70,21 @@ jobs:
           extensions: mbstring, json, dom
       - name: Run PHP_CodeSniffer (Errors only)
         run: phpcs --standard=phpcs.xml --warning-severity=0 --report=checkstyle $(git diff --name-only --diff-filter=AM origin/${{ github.event.pull_request.base.ref }} HEAD | grep php | tr '\n' ' ') | cs2pr
+
+  phpstan:
+    name: PHPStan
+    needs: check_php_files_changed
+    runs-on: ubuntu-latest
+    if: needs.check_php_files_changed.outputs.changed != '0' && needs.check_config_files.outputs.phpstan_neon_exists == '1'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Setup PHP with PECL extension
+        uses: shivammathur/setup-php@v2
+        with:
+          tools: phpstan, composer, cs2pr
+          extensions: mbstring, json, dom
+      - name: Run PHPStan analysis
+        run: phpstan analyse --no-progress --no-interaction --memory-limit=512M --configuration=phpstan.neon --error-format=checkstyle| cs2pr
