@@ -27,12 +27,13 @@ jobs:
     name: Check for required config files
     runs-on: ubuntu-latest
     outputs:
-      phpcs_xml_exists: ${{ steps.check.outputs.phpcs_xml_exists }}
-      phpstan_neon_exists: ${{ steps.check.outputs.phpstan_neon_exists }}
+      phpcs_xml_exists: ${{ steps.check_phpcs.outputs.phpcs_xml_exists }}
+      phpstan_neon_exists: ${{ steps.check_phpstan.outputs.phpstan_neon_exists }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
       - name: Check for phpcs.xml
+        id: check_phpcs
         run: |
           if [ -f "phpcs.xml" ]; then
             echo "phpcs.xml found."
@@ -42,6 +43,7 @@ jobs:
             echo "phpcs_xml_exists=0" >> $GITHUB_OUTPUT
           fi
       - name: Check for phpstan.neon
+        id: check_phpstan
         run: |
           if [ -f "phpstan.neon" ]; then
             echo "phpstan.neon found."
