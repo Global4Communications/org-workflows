@@ -23,11 +23,30 @@ jobs:
           echo "Changed PHP files:"
           echo "$CHANGED_FILES"
 
+  check_config_files:
+    name: Check for required config files
+    runs-on: ubuntu-latest
+    outputs:
+      exists: ${{ steps.check.outputs.exists }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Check for phpcs.xml
+        id: check
+        run: |
+          if [ -f "phpcs.xml" ]; then
+            echo "phpcs.xml found."
+            echo "phpcs_xml_exists=1" >> $GITHUB_OUTPUT
+          else
+            echo "phpcs.xml not found."
+            echo "phpcs_xml_exists=0" >> $GITHUB_OUTPUT
+          fi
+
   phpcs:
     name: PHP_CodeSniffer
-    needs: check_php_files_changed
+    needs: [check_php_files_changed, check_config_files]
     runs-on: ubuntu-latest
-    if: needs.check_php_files_changed.outputs.changed != '0'
+    if: needs.check_php_files_changed.outputs.changed != '0' && needs.check_config_files.outputs.phpcs_xml_exists == '1'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
