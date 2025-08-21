@@ -1,4 +1,4 @@
-name: PHP Code Analysis (PR)
+name: PHP CI (PR)
 
 on:
   workflow_call:
