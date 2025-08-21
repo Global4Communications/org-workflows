@@ -1,0 +1,39 @@
+name: PHP Code Analysis (PR)
+
+on:
+  pull_request:
+
+jobs:
+  check_php_files_changed:
+    name: Check for changed PHP files
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.php_files_changed.outputs.changed }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Check for changed PHP files
+        id: php_files_changed
+        run: |
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }} HEAD | grep php | wc -l)
+          echo "changed=$CHANGED_FILES" >> $GITHUB_OUTPUT
+
+  phpcs:
+    name: PHP_CodeSniffer
+    needs: check_php_files_changed
+    runs-on: ubuntu-latest
+    if: needs.check_php_files_changed.outputs.changed != '0'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Setup PHP with PECL extension
+        uses: shivammathur/setup-php@v2
+        with:
+          tools: phpcs, cs2pr, composer
+          extensions: mbstring, json, dom
+      - name: Run PHP_CodeSniffer (Errors only)
+        run: phpcs --standard=phpcs.xml --warning-severity=0 --report=checkstyle $(git diff --name-only --diff-filter=AM origin/${{ github.event.pull_request.base.ref }} HEAD | grep php | tr '\n' ' ') | cs2pr
