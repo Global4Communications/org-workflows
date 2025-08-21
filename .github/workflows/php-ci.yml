@@ -32,6 +32,8 @@ jobs:
     outputs:
       phpcs_xml_exists: ${{ steps.check_phpcs.outputs.phpcs_xml_exists }}
       phpstan_neon_exists: ${{ steps.check_phpstan.outputs.phpstan_neon_exists }}
+      phpunit_xml_exists: ${{ steps.check_phpunit.outputs.phpunit_xml_exists }}
+      behat_yml_exists: ${{ steps.check_behat.outputs.behat_yml_exists }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
