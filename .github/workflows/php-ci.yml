@@ -89,7 +89,7 @@ jobs:
           PHP_VERSION=$(jq -r '.require.php' composer.json)
           echo "PHP version found: $PHP_VERSION"
           echo "PHP version with just the major and minor version and without ^: "
-          PHP_VERSION_MAJOR_MINOR=$(echo "$PHP_VERSION" | sed 's/^\\^//; s/\\..*//')
+          PHP_VERSION_MAJOR_MINOR=$(echo "$PHP_VERSION" | sed -E 's/^\^([0-9]+\.[0-9]+)\.0$/\1/')
           echo "php_version=$PHP_VERSION_MAJOR_MINOR" >> $GITHUB_OUTPUT
       - name: Setup PHP with PECL extension
         uses: shivammathur/setup-php@v2
