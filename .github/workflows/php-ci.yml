@@ -56,6 +56,44 @@ jobs:
             echo "phpstan_neon_exists=0" >> $GITHUB_OUTPUT
           fi
 
+  composer_install:
+    name: Composer Install
+    runs-on: ubuntu-latest
+    env:
+      MANDRILL_APIKEY: "RANDOM_API_KEY"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Find php version from composer.json
+        id: find_php_version
+        run: |
+          PHP_VERSION=$(jq -r '.require.php' composer.json)
+          echo "PHP version found in composer.json: $PHP_VERSION"
+          PHP_VERSION_MAJOR_MINOR=$(echo "$PHP_VERSION" | sed -E 's/^\^([0-9]+\.[0-9]+)\.0$/\1/')
+          echo "PHP version: $PHP_VERSION_MAJOR_MINOR"
+          echo "php_version=$PHP_VERSION_MAJOR_MINOR" >> $GITHUB_OUTPUT
+      - name: Setup PHP with PECL extension
+        uses: shivammathur/setup-php@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.webservices_pat }}
+          COMPOSER_AUTH_JSON: '{"github-oauth": {"github.com": "${{ secrets.webservices_pat }}"}}'
+        with:
+          php-version: ${{ steps.find_php_version.outputs.php_version }}
+          tools: composer, cs2pr
+          extensions: mbstring, json, dom
+      - name: Install dependencies
+        run: |
+          composer config --global github-protocols https
+          composer install --prefer-dist --no-interaction --no-progress
+      - name: Upload vendor directory as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: vendor-dependencies
+          path: vendor
+          retention-days: 1 # Minimum value
+
   phpcs:
     name: PHP_CodeSniffer
     needs: [check_php_files_changed, check_config_files]
@@ -98,17 +136,15 @@ jobs:
           echo "php_version=$PHP_VERSION_MAJOR_MINOR" >> $GITHUB_OUTPUT
       - name: Setup PHP with PECL extension
         uses: shivammathur/setup-php@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.webservices_pat }}
-          COMPOSER_AUTH_JSON: '{"github-oauth": {"github.com": "${{ secrets.webservices_pat }}"}}'
         with:
           php-version: ${{ steps.find_php_version.outputs.php_version }}
           tools: phpstan:1.12, composer, cs2pr
           extensions: mbstring, json, dom
-      - name: Install dependencies
-        run: |
-          composer config --global github-protocols https
-          composer install --prefer-dist --no-interaction --no-progress
+      - name: Download vendor artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: vendor-dependencies
+          path: vendor
       - name: config output
         run: cat phpstan.neon
       - name: Run PHPStan analysis
