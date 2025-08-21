@@ -86,17 +86,8 @@ jobs:
       - name: Setup PHP with PECL extension
         uses: shivammathur/setup-php@v2
         with:
-          tools: phpstan, composer, cs2pr
+          tools: phpstan:1.12, composer, cs2pr
           extensions: mbstring, json, dom
-      - name: Create composer.json for PHPStan
-        run: |
-          echo '{
-            "require-dev": {
-              "phpstan/phpstan": "^1.12"
-            }
-          }' > phpstan-composer.json
-      - name: Install dependencies with Composer
-        run: composer install --prefer-dist --no-progress --no-suggest --no-plugins --file=phpstan-composer.json
       - name: config output
         run: cat phpstan.neon
       - name: Run PHPStan analysis
