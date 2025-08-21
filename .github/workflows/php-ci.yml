@@ -68,6 +68,8 @@ jobs:
         with:
           tools: phpcs, cs2pr, composer
           extensions: mbstring, json, dom
+      - name: config output
+        run: cat phpcs.xml
       - name: Run PHP_CodeSniffer (Errors only)
         run: phpcs --standard=phpcs.xml --warning-severity=0 --report=checkstyle $(git diff --name-only --diff-filter=AM origin/${{ github.event.pull_request.base.ref }} HEAD | grep php | tr '\n' ' ') | cs2pr
 
@@ -86,5 +88,7 @@ jobs:
         with:
           tools: phpstan, composer, cs2pr
           extensions: mbstring, json, dom
+      - name: config output
+        run: cat phpstan.neon
       - name: Run PHPStan analysis
         run: phpstan analyse --no-progress --no-interaction --memory-limit=512M --configuration=phpstan.neon --error-format=checkstyle| cs2pr
