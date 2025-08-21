@@ -27,7 +27,7 @@ jobs:
     name: Check for required config files
     runs-on: ubuntu-latest
     outputs:
-      exists: ${{ steps.check.outputs.exists }}
+      phpcs_xml_exists: ${{ steps.check.outputs.phpcs_xml_exists }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
