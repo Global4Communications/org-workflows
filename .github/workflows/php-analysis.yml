@@ -1,7 +1,7 @@
 name: PHP Code Analysis (PR)
 
 on:
-  pull_request:
+  workflow_call:
 
 jobs:
   check_php_files_changed:
