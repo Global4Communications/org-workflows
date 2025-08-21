@@ -83,9 +83,16 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      - name: Find php version from composer.json
+        id: find_php_version
+        run: |
+          PHP_VERSION=$(jq -r '.require.php' composer.json)
+          echo "PHP version found: $PHP_VERSION"
+          echo "php_version=$PHP_VERSION" >> $GITHUB_OUTPUT
       - name: Setup PHP with PECL extension
         uses: shivammathur/setup-php@v2
         with:
+          php-version: ${{ steps.find_php_version.outputs.php_version }}
           tools: phpstan:1.12, composer, cs2pr
           extensions: mbstring, json, dom
       - name: config output
