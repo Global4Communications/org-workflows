@@ -33,7 +33,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
       - name: Check for phpcs.xml
-        id: check
         run: |
           if [ -f "phpcs.xml" ]; then
             echo "phpcs.xml found."
@@ -43,7 +42,6 @@ jobs:
             echo "phpcs_xml_exists=0" >> $GITHUB_OUTPUT
           fi
       - name: Check for phpstan.neon
-        id: check
         run: |
           if [ -f "phpstan.neon" ]; then
             echo "phpstan.neon found."
