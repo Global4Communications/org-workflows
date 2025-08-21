@@ -95,14 +95,14 @@ jobs:
           echo "php_version=$PHP_VERSION_MAJOR_MINOR" >> $GITHUB_OUTPUT
       - name: Setup PHP with PECL extension
         uses: shivammathur/setup-php@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.WEBSERVICES_PAT }}
+          COMPOSER_AUTH_JSON: '{"github-oauth": {"github.com": "${{ secrets.WEBSERVICES_PAT }}"}}'
         with:
           php-version: ${{ steps.find_php_version.outputs.php_version }}
           tools: phpstan:1.12, composer, cs2pr
           extensions: mbstring, json, dom
       - name: Install dependencies
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COMPOSER_AUTH_JSON: '{"github-oauth": {"github.com": "${{ secrets.GITHUB_TOKEN }}"}}'
         run: |
           composer config --global github-protocols https
           composer install --prefer-dist --no-interaction --no-progress
