@@ -55,6 +55,26 @@ jobs:
             echo "phpstan.neon not found."
             echo "phpstan_neon_exists=0" >> $GITHUB_OUTPUT
           fi
+      - name: Check for phpunit.xml
+        id: check_phpunit
+        run: |
+          if [ -f "phpunit.xml" ]; then
+            echo "phpunit.xml found."
+            echo "phpunit_xml_exists=1" >> $GITHUB_OUTPUT
+          else
+            echo "phpunit.xml not found."
+            echo "phpunit_xml_exists=0" >> $GITHUB_OUTPUT
+          fi
+      - name: Check for behat.yml
+        id: check_behat
+        run: |
+          if [ -f "behat.yml" ]; then
+            echo "behat.yml found."
+            echo "behat_yml_exists=1" >> $GITHUB_OUTPUT
+          else
+            echo "behat.yml not found."
+            echo "behat_yml_exists=0" >> $GITHUB_OUTPUT
+          fi
 
   detect_php_version:
     name: Detect PHP Version
@@ -128,7 +148,7 @@ jobs:
     name: Behat
     needs: [check_php_files_changed, check_config_files, detect_php_version]
     runs-on: ubuntu-latest
-    if: needs.check_php_files_changed.outputs.changed != '0'
+    if: needs.check_php_files_changed.outputs.changed != '0' && needs.check_config_files.outputs.behat_yml_exists == '1'
     env:
       MANDRILL_APIKEY: "RANDOM_API_KEY"
     steps:
@@ -161,7 +181,7 @@ jobs:
     name: PHPUnit
     needs: [check_php_files_changed, check_config_files, detect_php_version]
     runs-on: ubuntu-latest
-    if: needs.check_php_files_changed.outputs.changed != '0'
+    if: needs.check_php_files_changed.outputs.changed != '0' && needs.check_config_files.outputs.phpunit_xml_exists == '1'
     env:
       MANDRILL_APIKEY: "RANDOM_API_KEY"
     steps:
