@@ -103,10 +103,12 @@ jobs:
           php-version: ${{ needs.detect_php_version.outputs.php_version }}
           tools: phpstan:1.12, composer, cs2pr
           extensions: mbstring, json, dom
-      - name: Install dependencies
+      - name: Laravel Setup
         run: |
+          cp .env.example .env
           composer config --global github-protocols https
           composer install --prefer-dist --no-interaction --no-progress
+          php artisan key:generate --force
       - name: Run PHPStan analysis
         run: phpstan analyse --no-progress --no-interaction --memory-limit=512M --configuration=phpstan.neon --error-format=checkstyle -vvv | cs2pr
 
@@ -131,13 +133,11 @@ jobs:
           php-version: ${{ needs.detect_php_version.outputs.php_version }}
           tools: composer
           extensions: mbstring, json, dom
-      - name: Composer install
-        run: |
-          composer config --global github-protocols https
-          composer install --prefer-dist --no-interaction --no-progress
-      - name: Prepare Laravel app for testing
+      - name: Laravel Setup
         run: |
           cp .env.example .env
+          composer config --global github-protocols https
+          composer install --prefer-dist --no-interaction --no-progress
           php artisan key:generate --force
       - name: Run Behat tests
         run: |
@@ -164,13 +164,11 @@ jobs:
           php-version: ${{ needs.detect_php_version.outputs.php_version }}
           tools: composer, phpunit
           extensions: mbstring, json, dom
-      - name: Install Behat and project dependencies
-        run: |
-          composer config --global github-protocols https
-          composer install --prefer-dist --no-interaction --no-progress
-      - name: Prepare Laravel app for testing
+      - name: Laravel Setup
         run: |
           cp .env.example .env
+          composer config --global github-protocols https
+          composer install --prefer-dist --no-interaction --no-progress
           php artisan key:generate --force
       - name: Setup problem matchers for PHPUnit
         run: echo "::add-matcher::${{ runner.tool_cache }}/phpunit.json"
