@@ -20,11 +20,9 @@ jobs:
       - name: Check for changed PHP files
         id: php_files_changed
         run: |
-          CHANGED_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }} HEAD | grep php)
-          CHANGED_COUNT=$(echo "$CHANGED_FILES" | wc -l)
+          CHANGED_COUNT=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }} HEAD | grep php | wc -l)
           echo "changed=$CHANGED_COUNT" >> $GITHUB_OUTPUT
-          echo "Changed PHP files:"
-          echo "$CHANGED_FILES"
+          echo "Number of changed PHP files: " $CHANGED_COUNT
 
   detect_php_version:
     name: Detect PHP Version
