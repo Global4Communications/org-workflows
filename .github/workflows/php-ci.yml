@@ -28,7 +28,6 @@ jobs:
     name: Check for config files
     runs-on: ubuntu-latest
     outputs:
-      phpcs: ${{ steps.check.outputs.phpcs }}
       phpstan: ${{ steps.check.outputs.phpstan }}
       behat: ${{ steps.check.outputs.behat }}
       phpunit: ${{ steps.check.outputs.phpunit }}
@@ -40,7 +39,6 @@ jobs:
       - name: Check config files
         id: check
         run: |
-          if [ -f "phpcs.xml" ]; then echo "phpcs=true" >> $GITHUB_OUTPUT; else echo "phpcs=false" >> $GITHUB_OUTPUT; fi
           if [ -f "phpstan.neon" ]; then echo "phpstan=true" >> $GITHUB_OUTPUT; else echo "phpstan=false" >> $GITHUB_OUTPUT; fi
           if [ -f "behat.yml" ]; then echo "behat=true" >> $GITHUB_OUTPUT; else echo "behat=false" >> $GITHUB_OUTPUT; fi
           if [ -f "phpunit.xml" ]; then echo "phpunit=true" >> $GITHUB_OUTPUT; else echo "phpunit=false" >> $GITHUB_OUTPUT; fi
@@ -66,9 +64,9 @@ jobs:
 
   phpcs:
     name: PHP_CodeSniffer
-    needs: [check_php_files_changed, check_config_files]
+    needs: [check_php_files_changed]
     runs-on: ubuntu-latest
-    if: needs.check_php_files_changed.outputs.changed != '0' && needs.check_config_files.outputs.phpcs == 'true'
+    if: needs.check_php_files_changed.outputs.changed != '0'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
