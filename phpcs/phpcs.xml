@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<ruleset name="CustomRuleset">
+    <rule ref="PSR12" />
+
+    <!-- Apply a custom rule for Test.php files -->
+    <rule ref="PSR12">
+        <include-pattern>**/*Test.php</include-pattern>
+        <exclude name="PSR1.Methods.CamelCapsMethodName.NotCamelCaps" />
+    </rule>
+</ruleset>

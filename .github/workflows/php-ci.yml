@@ -79,6 +79,14 @@ jobs:
         with:
           tools: phpcs, cs2pr, composer
           extensions: mbstring, json, dom
+      - name: Grab org wide PHPCS config
+        uses: actions/checkout@v3
+        with:
+          repository: Global4Communications/org-workflows
+          path: org-workflows
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Copy phpcs.xml
+        run: cp org-workflows/phpcs/phpcs.xml ./phpcs.xml
       - name: Run PHP_CodeSniffer (Errors only)
         run: phpcs --standard=phpcs.xml --warning-severity=0 --report=checkstyle $(git diff --name-only --diff-filter=AM origin/${{ github.event.pull_request.base.ref }} HEAD | grep php | tr '\n' ' ') | cs2pr
 
