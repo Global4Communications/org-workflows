@@ -7,4 +7,11 @@
         <include-pattern>**/*Test.php</include-pattern>
         <exclude name="PSR1.Methods.CamelCapsMethodName.NotCamelCaps" />
     </rule>
+
+    <!-- Exclude namespace rule for migrations -->
+    <rule ref="PSR12">
+        <include-pattern>database/migrations/*</include-pattern>
+        <include-pattern>database/seeds/*</include-pattern>
+        <exclude name="PSR1.Classes.ClassDeclaration.MissingNamespace" />
+    </rule>    
 </ruleset>
