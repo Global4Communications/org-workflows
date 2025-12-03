@@ -13,5 +13,5 @@
         <include-pattern>database/migrations/*</include-pattern>
         <include-pattern>database/seeds/*</include-pattern>
         <exclude name="PSR1.Classes.ClassDeclaration.MissingNamespace" />
-    </rule>    
+    </rule>
 </ruleset>
