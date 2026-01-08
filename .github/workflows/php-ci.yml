@@ -31,11 +31,20 @@ jobs:
       phpstan: ${{ steps.check.outputs.phpstan }}
       behat: ${{ steps.check.outputs.behat }}
       phpunit: ${{ steps.check.outputs.phpunit }}
+      laravel: ${{ steps.check_laravel.outputs.is_laravel }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      - name: Check for Laravel dependency in composer.json
+        id: check_laravel
+        run: |
+          if jq -e '.require | has("laravel/framework")' composer.json > /dev/null; then
+            echo "is_laravel=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_laravel=false" >> $GITHUB_OUTPUT
+          fi
       - name: Check config files
         id: check
         run: |
@@ -170,11 +179,14 @@ jobs:
           php-version: ${{ needs.detect_php_version.outputs.php_version }}
           tools: composer, phpunit
           extensions: mbstring, json, dom
-      - name: Laravel Setup
+      - name: Configure and Install Composer dependencies
         run: |
-          cp .env.example .env
           composer config --global github-protocols https
           composer install --prefer-dist --no-interaction --no-progress
+      - name: Laravel Setup
+        if: needs.check_config_files.outputs.laravel == 'true'
+        run: |
+          cp .env.example .env
           php artisan key:generate --force
       - name: Setup problem matchers for PHPUnit
         run: echo "::add-matcher::${{ runner.tool_cache }}/phpunit.json"
