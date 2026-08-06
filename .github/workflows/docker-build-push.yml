@@ -1,0 +1,125 @@
+name: Build and push Docker image
+
+on:
+  workflow_call:
+    inputs:
+      image:
+        description: Image name under ghcr.io/global4communications
+        required: true
+        type: string
+      variant:
+        description: >
+          Tag family.  Empty gives latest / <sha> / pr-<n>.  Set it (staging,
+          php82) for <variant> / <variant>-<sha> / <variant>-pr-<n>.
+        required: false
+        type: string
+        default: ''
+      dockerfile:
+        required: false
+        type: string
+        default: Dockerfile
+      context:
+        required: false
+        type: string
+        default: .
+      build_args:
+        description: >
+          Extra build args, one KEY=value per line.  BUILD_COMMIT,
+          BUILD_TIMESTAMP and BUILD_RUN are always passed.
+        required: false
+        type: string
+        default: ''
+      platforms:
+        required: false
+        type: string
+        default: linux/amd64
+      no_cache:
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      webservices_pat:
+        required: true
+    outputs:
+      sha_tag:
+        description: The immutable commit tag this build pushed
+        value: ${{ jobs.build.outputs.sha_tag }}
+      digest:
+        description: Image digest, for pinning a deploy to exactly this build
+        value: ${{ jobs.build.outputs.digest }}
+
+concurrency:
+  group: docker-build-${{ github.workflow }}-${{ github.ref }}-${{ inputs.variant }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      sha_tag: ${{ steps.meta.outputs.sha_tag }}
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.webservices_pat }}
+
+      # Two tags per build: a moving one to track, and an immutable commit one to
+      # pin or roll back to.  A PR moves its own pr-<n> tag, never the shared one.
+      #
+      # github.sha is the ephemeral merge commit on pull_request events, which
+      # names something that does not survive the merge -- use the branch head.
+      - name: Build metadata
+        id: meta
+        env:
+          IMAGE: ghcr.io/global4communications/${{ inputs.image }}
+          VARIANT: ${{ inputs.variant }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          prefix="${VARIANT:+$VARIANT-}"
+          moving="${VARIANT:-latest}"
+          [ -n "$PR" ] && moving="${prefix}pr-${PR}"
+
+          {
+            echo "sha_tag=${prefix}${SHA}"
+            echo "timestamp=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            echo "tags<<TAGS"
+            echo "$IMAGE:$moving"
+            echo "$IMAGE:${prefix}${SHA}"
+            echo "TAGS"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          context: ${{ inputs.context }}
+          file: ${{ inputs.dockerfile }}
+          platforms: ${{ inputs.platforms }}
+          no-cache: ${{ inputs.no_cache }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.event.pull_request.head.sha || github.sha }}
+            org.opencontainers.image.created=${{ steps.meta.outputs.timestamp }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          build-args: |
+            BUILD_COMMIT=${{ github.event.pull_request.head.sha || github.sha }}
+            BUILD_TIMESTAMP=${{ steps.meta.outputs.timestamp }}
+            BUILD_RUN=${{ github.run_number }}
+            ${{ inputs.build_args }}
+
+      - name: Summary
+        run: |
+          echo "### Pushed" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ steps.meta.outputs.tags }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "digest: ${{ steps.build.outputs.digest }}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
