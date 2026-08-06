@@ -42,32 +42,28 @@ jobs:
 
 ### Naming
 
-**An image is named after its repo.** `home-switcher` builds
-`ghcr.io/global4communications/home-switcher`, and no `with:` block is needed.
+The image reference is `<registry>/<owner>/<name>`, defaulting to
+`ghcr.io/global4communications/<repo name>`. **An image is named after its repo**,
+so most callers need no `with:` block at all.
 
-`image` takes the whole reference, so it can be overridden as far as you need —
-a different name in the usual place, or a different registry entirely:
+Override any of the three on its own:
 
 ```yaml
     with:
-      image: ghcr.io/global4communications/giacom-api
+      name: giacom-api                     # different name, same place
 ```
 
 ```yaml
     with:
-      image: someregistry.azurecr.io/team/thing
+      registry: someregistry.azurecr.io    # somewhere else entirely
+      owner: team
 ```
 
-The workflow logs in to whichever registry the reference names, so the second
-case pushes rather than failing at the end of a build — though `webservices_pat`
-has to be a credential that registry accepts.
+`webservices_pat` has to be a credential the registry accepts — the login step
+uses whatever `registry` is set to.
 
-Do not include a tag; tags are added for you, and the build fails if you pass one
-so a typo can't quietly publish `:latest:v2`. Uppercase is rejected for the same
-reason.
-
-Likewise the Dockerfile is expected at the repo root. Override with
-`dockerfile:` if it lives elsewhere, but prefer moving the file.
+The Dockerfile is expected at the repo root. Override with `dockerfile:` if it
+lives elsewhere, but prefer moving the file.
 
 ### Tags
 
