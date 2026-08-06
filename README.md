@@ -1,15 +1,20 @@
 # org-workflows
 
-Reusable GitHub Actions workflows shared across G4C projects.  Call them with
-`uses:` rather than copying the steps into each repo, so a fix lands everywhere
-at once.
+Reusable GitHub Actions workflows shared across G4C projects. Call them with
+`uses:` rather than copying the steps, so a fix lands everywhere at once.
 
-## `php-ci.yml`
+## php-ci.yml
 
 Runs PHPCS, PHPStan, Behat and PHPUnit on a pull request, skipping whatever the
 repo has no config file for.
 
 ```yaml
+name: CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
 jobs:
   php:
     uses: Global4Communications/org-workflows/.github/workflows/php-ci.yml@main
@@ -17,9 +22,10 @@ jobs:
       webservices_pat: ${{ secrets.WEBSERVICES_PAT }}
 ```
 
-## `docker-build-push.yml`
+## docker-build-push.yml
 
-Builds an image and pushes it to GHCR with a consistent tag scheme.
+Builds an image and pushes it to GHCR. Copy this whole file into
+`.github/workflows/build-docker-image.yml` and uncomment what you need.
 
 ```yaml
 name: Build and Push Docker Image
@@ -38,32 +44,26 @@ jobs:
     uses: Global4Communications/org-workflows/.github/workflows/docker-build-push.yml@main
     secrets:
       webservices_pat: ${{ secrets.WEBSERVICES_PAT }}
+    ## Everything below is optional and shows the defaults. Drop one "# " to
+    ## enable a line; the ## notes stay comments.
+    # with:
+    #   ## The image is <registry>/<owner>/<name>, so an image is named after
+    #   ## its repo. Override any one of the three on its own.
+    #   registry: ghcr.io
+    #   owner: global4communications
+    #   name: ${{ github.event.repository.name }}
+    #
+    #   ## Tag family, for a second image built from the same repo. 'staging'
+    #   ## gives staging, staging-<commit> and staging-pr-<n>.
+    #   variant: ''
+    #
+    #   ## Prefer moving the file to the repo root over setting this.
+    #   dockerfile: Dockerfile
+    #
+    #   ## One KEY=value per line.
+    #   build_args: |
+    #     ASSET_URL=https://www.hometelecom.co.uk/shop
 ```
-
-### Naming
-
-The image reference is `<registry>/<owner>/<name>`, defaulting to
-`ghcr.io/global4communications/<repo name>`. **An image is named after its repo**,
-so most callers need no `with:` block at all.
-
-Override any of the three on its own:
-
-```yaml
-    with:
-      name: giacom-api                     # different name, same place
-```
-
-```yaml
-    with:
-      registry: someregistry.azurecr.io    # somewhere else entirely
-      owner: team
-```
-
-`webservices_pat` has to be a credential the registry accepts — the login step
-uses whatever `registry` is set to.
-
-The Dockerfile is expected at the repo root. Override with `dockerfile:` if it
-lives elsewhere, but prefer moving the file.
 
 ### Tags
 
@@ -73,35 +73,21 @@ lives elsewhere, but prefer moving the file.
 | pull request | `pr-<number>`, `<commit>` |
 
 A PR only ever moves its own `pr-<number>` tag, so it cannot overwrite what
-consumers track.  The commit tag is immutable — pin a deployment to it, or roll
-back to it.
-
-Set `variant` to build a tag family instead: `variant: staging` gives `staging`,
-`staging-<commit>` and `staging-pr-<n>`.  Use it for a second image built from
-the same repo, or for a matrix of base images (`php82`, `php81`, …).
+consumers track. The commit tag is immutable — pin a deployment to it, or roll
+back to it. `sha_tag` and `digest` are exposed as outputs so a following job can
+deploy exactly the build that just ran.
 
 ### Build metadata
 
-Three build args are always passed, whether or not the Dockerfile declares them:
+`BUILD_COMMIT`, `BUILD_TIMESTAMP` and `BUILD_RUN` are always passed as build args
+and set as OCI labels, so any image can be identified with
+`docker buildx imagetools inspect` without pulling it. Dockerfiles that don't
+declare the args are unaffected.
 
-| Arg | Value |
-| --- | --- |
-| `BUILD_COMMIT` | commit the image was built from |
-| `BUILD_TIMESTAMP` | UTC build time, ISO 8601 |
-| `BUILD_RUN` | workflow run number |
-
-The same values go on as OCI labels, so any image can be identified without
-pulling it:
-
-```
-docker buildx imagetools inspect ghcr.io/global4communications/<image>:latest
-```
-
-Web apps should also write them into the document root, so the running build can
-be checked over HTTP at `/version.txt`.  This part has to live in the Dockerfile
-— only the app knows where its document root is, and the base image cannot write
-into a directory the app has not copied in yet.  Put it in the **last** layer, or
-the changing values invalidate the `composer install` layer on every build:
+Web apps should also serve them at `/version.txt`, so the running build can be
+checked over HTTP. This has to live in the Dockerfile — only the app knows where
+its document root is. Put it in the **last** layer, or the changing values
+invalidate the `composer install` layer every build:
 
 ```dockerfile
 ARG BUILD_COMMIT=unknown
@@ -113,19 +99,6 @@ RUN printf 'commit: %s\nbuilt:  %s\nrun:    %s\n' \
     && chown phpapp:phpapp /var/www/html/public/version.txt
 ```
 
-### Outputs
-
-`sha_tag` and `digest` are exposed so a follow-on job can deploy exactly the
-build that just ran, rather than resolving a moving tag again:
-
-```yaml
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "deploying ${{ needs.build.outputs.digest }}"
-```
-
-Deployment itself is deliberately not part of this workflow — it differs too much
+Deployment is deliberately not part of this workflow — it differs too much
 between apps (terraform pin, `az` sitecontainer update, restart-to-pull) to be
 worth a pile of conditional inputs.
