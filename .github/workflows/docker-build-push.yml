@@ -4,9 +4,13 @@ on:
   workflow_call:
     inputs:
       image:
-        description: Image name under ghcr.io/global4communications
-        required: true
+        description: >
+          Image name under ghcr.io/global4communications.  Defaults to the repo
+          name -- only set this where the image is deliberately named something
+          else (giacom-api, pxc-artemis-api).
+        required: false
         type: string
+        default: ''
       variant:
         description: >
           Tag family.  Empty gives latest / <sha> / pr-<n>.  Set it (staging,
@@ -78,16 +82,28 @@ jobs:
       - name: Build metadata
         id: meta
         env:
-          IMAGE: ghcr.io/global4communications/${{ inputs.image }}
+          IMAGE_INPUT: ${{ inputs.image }}
           VARIANT: ${{ inputs.variant }}
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           PR: ${{ github.event.pull_request.number }}
         run: |
+          # An image is named after its repo unless the caller says otherwise.
+          name="${IMAGE_INPUT:-${GITHUB_REPOSITORY#*/}}"
+          case "$name" in
+            */*|*:*|*[A-Z]*)
+              echo "::error::image must be a bare lowercase name, got '$name'." \
+                   "The registry and owner are added for you."
+              exit 1
+              ;;
+          esac
+          IMAGE="ghcr.io/global4communications/$name"
+
           prefix="${VARIANT:+$VARIANT-}"
           moving="${VARIANT:-latest}"
           [ -n "$PR" ] && moving="${prefix}pr-${PR}"
 
           {
+            echo "image=$IMAGE"
             echo "sha_tag=${prefix}${SHA}"
             echo "timestamp=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
             echo "tags<<TAGS"

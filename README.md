@@ -36,12 +36,22 @@ on:
 jobs:
   build:
     uses: Global4Communications/org-workflows/.github/workflows/docker-build-push.yml@main
-    with:
-      image: digital-sales-journey
-      dockerfile: .docker/dockerfile
     secrets:
       webservices_pat: ${{ secrets.WEBSERVICES_PAT }}
 ```
+
+### Naming
+
+**An image is named after its repo.** `home-switcher` builds
+`ghcr.io/global4communications/home-switcher`, and no `with:` block is needed.
+Pass `image:` only where an image is deliberately named something else —
+`giacom-api` and `pxc-artemis-api` are the current exceptions.
+
+Give the bare name; the registry and owner are added for you, and the workflow
+fails the build rather than guessing if you pass a slash, a colon or a capital.
+
+Likewise the Dockerfile is expected at the repo root. Override with
+`dockerfile:` if it lives elsewhere, but prefer moving the file.
 
 ### Tags
 
