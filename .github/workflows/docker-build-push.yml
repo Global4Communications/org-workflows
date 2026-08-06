@@ -5,12 +5,14 @@ on:
     inputs:
       image:
         description: >
-          Image name under ghcr.io/global4communications.  Defaults to the repo
-          name -- only set this where the image is deliberately named something
-          else (giacom-api, pxc-artemis-api).
+          Full image reference, without a tag.  Defaults to the repo name under
+          ghcr.io/global4communications -- set it only where an image is
+          deliberately named something else (giacom-api, pxc-artemis-api), or to
+          push somewhere other than GHCR.  The workflow logs in to whichever
+          registry the reference names.
         required: false
         type: string
-        default: ${{ github.event.repository.name }}
+        default: ghcr.io/global4communications/${{ github.event.repository.name }}
       variant:
         description: >
           Tag family.  Empty gives latest / <sha> / pr-<n>.  Set it (staging,
@@ -67,13 +69,6 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.webservices_pat }}
-
       # Two tags per build: a moving one to track, and an immutable commit one to
       # pin or roll back to.  A PR moves its own pr-<n> tag, never the shared one.
       #
@@ -82,19 +77,32 @@ jobs:
       - name: Build metadata
         id: meta
         env:
-          NAME: ${{ inputs.image }}
+          IMAGE: ${{ inputs.image }}
           VARIANT: ${{ inputs.variant }}
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           PR: ${{ github.event.pull_request.number }}
         run: |
-          case "$NAME" in
-            ''|*/*|*:*|*[A-Z]*)
-              echo "::error::image must be a bare lowercase name, got '$NAME'." \
-                   "The registry and owner are added for you."
+          case "$IMAGE" in
+            ''|*[A-Z]*)
+              echo "::error::image must be a lowercase image reference, got '$IMAGE'"
               exit 1
               ;;
           esac
-          IMAGE="ghcr.io/global4communications/$NAME"
+          case "${IMAGE##*/}" in
+            *:*)
+              echo "::error::image must not carry a tag, got '$IMAGE'." \
+                   "Tags are added for you -- use 'variant' for a tag family."
+              exit 1
+              ;;
+          esac
+
+          # Log in to wherever the image actually lives, so overriding the whole
+          # reference works rather than building and then failing to push.
+          first="${IMAGE%%/*}"
+          case "$first" in
+            *.*|*:*|localhost) registry="$first" ;;
+            *) registry="docker.io" ;;
+          esac
 
           prefix="${VARIANT:+$VARIANT-}"
           moving="${VARIANT:-latest}"
@@ -102,13 +110,21 @@ jobs:
 
           {
             echo "image=$IMAGE"
+            echo "registry=$registry"
             echo "sha_tag=${prefix}${SHA}"
             echo "timestamp=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
             echo "tags<<TAGS"
-            echo "$IMAGE:$moving"
-            echo "$IMAGE:${prefix}${SHA}"
+            echo "${IMAGE}:${moving}"
+            echo "${IMAGE}:${prefix}${SHA}"
             echo "TAGS"
           } >> "$GITHUB_OUTPUT"
+
+      - name: Log in to the registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ steps.meta.outputs.registry }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.webservices_pat }}
 
       - name: Build and push
         id: build

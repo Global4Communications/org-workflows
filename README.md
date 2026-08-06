@@ -44,11 +44,27 @@ jobs:
 
 **An image is named after its repo.** `home-switcher` builds
 `ghcr.io/global4communications/home-switcher`, and no `with:` block is needed.
-Pass `image:` only where an image is deliberately named something else —
-`giacom-api` and `pxc-artemis-api` are the current exceptions.
 
-Give the bare name; the registry and owner are added for you, and the workflow
-fails the build rather than guessing if you pass a slash, a colon or a capital.
+`image` takes the whole reference, so it can be overridden as far as you need —
+a different name in the usual place, or a different registry entirely:
+
+```yaml
+    with:
+      image: ghcr.io/global4communications/giacom-api
+```
+
+```yaml
+    with:
+      image: someregistry.azurecr.io/team/thing
+```
+
+The workflow logs in to whichever registry the reference names, so the second
+case pushes rather than failing at the end of a build — though `webservices_pat`
+has to be a credential that registry accepts.
+
+Do not include a tag; tags are added for you, and the build fails if you pass one
+so a typo can't quietly publish `:latest:v2`. Uppercase is rejected for the same
+reason.
 
 Likewise the Dockerfile is expected at the repo root. Override with
 `dockerfile:` if it lives elsewhere, but prefer moving the file.
