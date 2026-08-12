@@ -17,10 +17,12 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      # Loose on purpose: anchoring to \.php$ would skip the suite for pull requests
+      # changing only phpunit.xml or phpstan.neon.
       - name: Check for changed PHP files
         id: php_files_changed
         run: |
-          CHANGED_COUNT=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }} HEAD | grep php | wc -l)
+          CHANGED_COUNT=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }} HEAD | grep -E 'php|composer\.(json|lock)$' | wc -l)
           echo "changed=$CHANGED_COUNT" >> $GITHUB_OUTPUT
           echo "Number of changed PHP files: " $CHANGED_COUNT
 
@@ -94,8 +96,16 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Copy phpcs.xml
         run: cp org-workflows/phpcs/phpcs.xml ./phpcs.xml
+      # `|| true` keeps grep's no-match exit from aborting the step if pipefail is ever
+      # enabled by a `shell: bash` declaration.
       - name: Run PHP_CodeSniffer (Errors only)
-        run: phpcs --standard=phpcs.xml --warning-severity=0 --report=checkstyle $(git diff --name-only --diff-filter=AM origin/${{ github.event.pull_request.base.ref }} HEAD | grep php | tr '\n' ' ') | cs2pr
+        run: |
+          FILES=$(git diff --name-only --diff-filter=AM origin/${{ github.event.pull_request.base.ref }} HEAD | grep '\.php$' | tr '\n' ' ' || true)
+          if [ -z "$FILES" ]; then
+            echo "No PHP files changed."
+            exit 0
+          fi
+          phpcs --standard=phpcs.xml --warning-severity=0 --report=checkstyle $FILES | cs2pr
 
   phpstan:
     name: PHPStan
