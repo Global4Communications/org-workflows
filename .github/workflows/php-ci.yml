@@ -17,14 +17,8 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      # Composer files carry no `php` in their names, so a dependency-only pull request
-      # counted zero and skipped PHPUnit, PHPStan, Behat and PHP_CodeSniffer entirely -
-      # no tests at all on the change most able to alter behaviour across an application.
-      #
-      # Additive on purpose. Anchoring this to `\.php$` would stop the suite running for
-      # pull requests that change only phpunit.xml or PHPStan configuration, which the
-      # loose match happens to catch. False positives here only cost a job that finds
-      # nothing to do; a false negative silently skips the tests.
+      # Loose on purpose: anchoring to \.php$ would skip the suite for pull requests
+      # changing only phpunit.xml or phpstan.neon.
       - name: Check for changed PHP files
         id: php_files_changed
         run: |
@@ -102,18 +96,10 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Copy phpcs.xml
         run: cp org-workflows/phpcs/phpcs.xml ./phpcs.xml
-      # `grep php` matched any path containing those three letters, so a pull request
-      # touching phpstan.neon or phpunit.xml handed phpcs files it will not analyse. It
-      # then reports "No files were checked" and exits 2, and cs2pr fails on the empty
-      # input. Anchor to the extension, and skip the step when nothing PHP changed -
-      # phpcs with no arguments errors with "You must supply at least one file or
-      # directory to process", which would just move the failure rather than fix it.
       - name: Run PHP_CodeSniffer (Errors only)
         run: |
-          # `|| true` because grep exits 1 when nothing matches, which is the case this
-          # step exists to handle. Harmless under the default `bash -e` shell, where the
-          # pipeline takes tr's status - but load-bearing the moment anyone sets
-          # `shell: bash`, which adds pipefail and would abort before the guard below.
+          # `|| true` keeps grep's no-match exit from aborting the step if pipefail is
+          # ever enabled by a `shell: bash` declaration.
           FILES=$(git diff --name-only --diff-filter=AM origin/${{ github.event.pull_request.base.ref }} HEAD | grep '\.php$' | tr '\n' ' ' || true)
           if [ -z "$FILES" ]; then
             echo "No PHP files changed."
