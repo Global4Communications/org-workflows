@@ -17,10 +17,18 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      # Composer files carry no `php` in their names, so a dependency-only pull request
+      # counted zero and skipped PHPUnit, PHPStan, Behat and PHP_CodeSniffer entirely -
+      # no tests at all on the change most able to alter behaviour across an application.
+      #
+      # Additive on purpose. Anchoring this to `\.php$` would stop the suite running for
+      # pull requests that change only phpunit.xml or PHPStan configuration, which the
+      # loose match happens to catch. False positives here only cost a job that finds
+      # nothing to do; a false negative silently skips the tests.
       - name: Check for changed PHP files
         id: php_files_changed
         run: |
-          CHANGED_COUNT=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }} HEAD | grep php | wc -l)
+          CHANGED_COUNT=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }} HEAD | grep -E 'php|composer\.(json|lock)$' | wc -l)
           echo "changed=$CHANGED_COUNT" >> $GITHUB_OUTPUT
           echo "Number of changed PHP files: " $CHANGED_COUNT
 
