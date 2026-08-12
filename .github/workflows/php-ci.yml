@@ -102,7 +102,11 @@ jobs:
       # directory to process", which would just move the failure rather than fix it.
       - name: Run PHP_CodeSniffer (Errors only)
         run: |
-          FILES=$(git diff --name-only --diff-filter=AM origin/${{ github.event.pull_request.base.ref }} HEAD | grep '\.php$' | tr '\n' ' ')
+          # `|| true` because grep exits 1 when nothing matches, which is the case this
+          # step exists to handle. Harmless under the default `bash -e` shell, where the
+          # pipeline takes tr's status - but load-bearing the moment anyone sets
+          # `shell: bash`, which adds pipefail and would abort before the guard below.
+          FILES=$(git diff --name-only --diff-filter=AM origin/${{ github.event.pull_request.base.ref }} HEAD | grep '\.php$' | tr '\n' ' ' || true)
           if [ -z "$FILES" ]; then
             echo "No PHP files changed."
             exit 0
