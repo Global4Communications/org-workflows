@@ -96,10 +96,10 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Copy phpcs.xml
         run: cp org-workflows/phpcs/phpcs.xml ./phpcs.xml
+      # `|| true` keeps grep's no-match exit from aborting the step if pipefail is ever
+      # enabled by a `shell: bash` declaration.
       - name: Run PHP_CodeSniffer (Errors only)
         run: |
-          # `|| true` keeps grep's no-match exit from aborting the step if pipefail is
-          # ever enabled by a `shell: bash` declaration.
           FILES=$(git diff --name-only --diff-filter=AM origin/${{ github.event.pull_request.base.ref }} HEAD | grep '\.php$' | tr '\n' ' ' || true)
           if [ -z "$FILES" ]; then
             echo "No PHP files changed."
