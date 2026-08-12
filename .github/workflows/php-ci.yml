@@ -94,8 +94,20 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Copy phpcs.xml
         run: cp org-workflows/phpcs/phpcs.xml ./phpcs.xml
+      # `grep php` matched any path containing those three letters, so a pull request
+      # touching phpstan.neon or phpunit.xml handed phpcs files it will not analyse. It
+      # then reports "No files were checked" and exits 2, and cs2pr fails on the empty
+      # input. Anchor to the extension, and skip the step when nothing PHP changed -
+      # phpcs with no arguments errors with "You must supply at least one file or
+      # directory to process", which would just move the failure rather than fix it.
       - name: Run PHP_CodeSniffer (Errors only)
-        run: phpcs --standard=phpcs.xml --warning-severity=0 --report=checkstyle $(git diff --name-only --diff-filter=AM origin/${{ github.event.pull_request.base.ref }} HEAD | grep php | tr '\n' ' ') | cs2pr
+        run: |
+          FILES=$(git diff --name-only --diff-filter=AM origin/${{ github.event.pull_request.base.ref }} HEAD | grep '\.php$' | tr '\n' ' ')
+          if [ -z "$FILES" ]; then
+            echo "No PHP files changed."
+            exit 0
+          fi
+          phpcs --standard=phpcs.xml --warning-severity=0 --report=checkstyle $FILES | cs2pr
 
   phpstan:
     name: PHPStan
