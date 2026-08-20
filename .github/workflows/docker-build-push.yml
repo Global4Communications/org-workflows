@@ -106,3 +106,8 @@ jobs:
             BUILD_TIMESTAMP=${{ steps.tags.outputs.built }}
             BUILD_RUN=${{ github.run_number }}
             ${{ inputs.build_args }}
+          # Forwarded as a build secret as well as a registry password, for the Dockerfiles that
+          # clone private g4c packages during composer install. A Dockerfile that never mounts it
+          # is unaffected.
+          secrets: |
+            webservices_pat=${{ secrets.webservices_pat }}
