@@ -6,7 +6,8 @@ Reusable GitHub Actions workflows shared across G4C projects. Call them with
 ## php-ci.yml
 
 Runs PHPCS, PHPStan, Behat and PHPUnit on a pull request, skipping whatever the
-repo has no config file for.
+repo has no config file for. PHPUnit is run via `vendor/bin/phpunit`, so the
+repository's Composer constraints decide the version under test.
 
 ```yaml
 name: CI

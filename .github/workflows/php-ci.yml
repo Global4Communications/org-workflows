@@ -173,7 +173,7 @@ jobs:
           COMPOSER_AUTH_JSON: '{"github-oauth": {"github.com": "${{ secrets.WEBSERVICES_PAT }}"}}'
         with:
           php-version: ${{ needs.check_php_context.outputs.php_version }}
-          tools: composer, phpunit
+          tools: composer
           extensions: mbstring, json, dom
       - name: Configure and Install Composer dependencies
         run: |
