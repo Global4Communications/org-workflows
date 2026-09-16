@@ -7,11 +7,16 @@ on:
         required: true
 
 jobs:
-  check_php_files_changed:
-    name: Check for changed PHP files
+  check_php_context:
+    name: Check PHP workflow context
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.php_files_changed.outputs.changed }}
+      phpstan: ${{ steps.check.outputs.phpstan }}
+      behat: ${{ steps.check.outputs.behat }}
+      phpunit: ${{ steps.check.outputs.phpunit }}
+      laravel: ${{ steps.check_laravel.outputs.is_laravel }}
+      php_version: ${{ steps.find_php_version.outputs.php_version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -25,20 +30,6 @@ jobs:
           CHANGED_COUNT=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }} HEAD | grep -E 'php|composer\.(json|lock)$' | wc -l)
           echo "changed=$CHANGED_COUNT" >> $GITHUB_OUTPUT
           echo "Number of changed PHP files: " $CHANGED_COUNT
-
-  check_config_files:
-    name: Check for config files
-    runs-on: ubuntu-latest
-    outputs:
-      phpstan: ${{ steps.check.outputs.phpstan }}
-      behat: ${{ steps.check.outputs.behat }}
-      phpunit: ${{ steps.check.outputs.phpunit }}
-      laravel: ${{ steps.check_laravel.outputs.is_laravel }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
       - name: Check for Laravel dependency in composer.json
         id: check_laravel
         run: |
@@ -53,17 +44,6 @@ jobs:
           if [ -f "phpstan.neon" ]; then echo "phpstan=true" >> $GITHUB_OUTPUT; else echo "phpstan=false" >> $GITHUB_OUTPUT; fi
           if [ -f "behat.yml" ]; then echo "behat=true" >> $GITHUB_OUTPUT; else echo "behat=false" >> $GITHUB_OUTPUT; fi
           if [ -f "phpunit.xml" ]; then echo "phpunit=true" >> $GITHUB_OUTPUT; else echo "phpunit=false" >> $GITHUB_OUTPUT; fi
-
-  detect_php_version:
-    name: Detect PHP Version
-    runs-on: ubuntu-latest
-    outputs:
-      php_version: ${{ steps.find_php_version.outputs.php_version }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
       - name: Find php version from composer.json
         id: find_php_version
         run: |
@@ -75,9 +55,9 @@ jobs:
 
   phpcs:
     name: PHP_CodeSniffer
-    needs: [check_php_files_changed]
+    needs: [check_php_context]
     runs-on: ubuntu-latest
-    if: needs.check_php_files_changed.outputs.changed != '0'
+    if: needs.check_php_context.outputs.changed != '0'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -109,9 +89,9 @@ jobs:
 
   phpstan:
     name: PHPStan
-    needs: [check_php_files_changed, detect_php_version, check_config_files]
+    needs: [check_php_context]
     runs-on: ubuntu-latest
-    if: needs.check_php_files_changed.outputs.changed != '0' && needs.check_config_files.outputs.phpstan == 'true'
+    if: needs.check_php_context.outputs.changed != '0' && needs.check_php_context.outputs.phpstan == 'true'
     env:
       MANDRILL_APIKEY: "RANDOM_API_KEY"
     steps:
@@ -125,7 +105,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.webservices_pat }}
           COMPOSER_AUTH_JSON: '{"github-oauth": {"github.com": "${{ secrets.webservices_pat }}"}}'
         with:
-          php-version: ${{ needs.detect_php_version.outputs.php_version }}
+          php-version: ${{ needs.check_php_context.outputs.php_version }}
           tools: phpstan:1.12, composer, cs2pr
           extensions: mbstring, json, dom
       - name: Configure and Install Composer dependencies
@@ -133,7 +113,7 @@ jobs:
           composer config --global github-protocols https
           composer install --prefer-dist --no-interaction --no-progress
       - name: Laravel Setup
-        if: needs.check_config_files.outputs.laravel == 'true'
+        if: needs.check_php_context.outputs.laravel == 'true'
         run: |
           cp .env.example .env
           php artisan key:generate --force
@@ -142,9 +122,9 @@ jobs:
 
   behat:
     name: Behat
-    needs: [check_php_files_changed, detect_php_version, check_config_files]
+    needs: [check_php_context]
     runs-on: ubuntu-latest
-    if: needs.check_php_files_changed.outputs.changed != '0' && needs.check_config_files.outputs.behat == 'true'
+    if: needs.check_php_context.outputs.changed != '0' && needs.check_php_context.outputs.behat == 'true'
     env:
       MANDRILL_APIKEY: "RANDOM_API_KEY"
     steps:
@@ -158,7 +138,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.WEBSERVICES_PAT }}
           COMPOSER_AUTH_JSON: '{"github-oauth": {"github.com": "${{ secrets.WEBSERVICES_PAT }}"}}'
         with:
-          php-version: ${{ needs.detect_php_version.outputs.php_version }}
+          php-version: ${{ needs.check_php_context.outputs.php_version }}
           tools: composer
           extensions: mbstring, json, dom
       - name: Configure and Install Composer dependencies
@@ -166,7 +146,7 @@ jobs:
           composer config --global github-protocols https
           composer install --prefer-dist --no-interaction --no-progress
       - name: Laravel Setup
-        if: needs.check_config_files.outputs.laravel == 'true'
+        if: needs.check_php_context.outputs.laravel == 'true'
         run: |
           cp .env.example .env
           php artisan key:generate --force
@@ -176,9 +156,9 @@ jobs:
 
   phpunit:
     name: PHPUnit
-    needs: [check_php_files_changed, detect_php_version, check_config_files]
+    needs: [check_php_context]
     runs-on: ubuntu-latest
-    if: needs.check_php_files_changed.outputs.changed != '0' && needs.check_config_files.outputs.phpunit == 'true'
+    if: needs.check_php_context.outputs.changed != '0' && needs.check_php_context.outputs.phpunit == 'true'
     env:
       MANDRILL_APIKEY: "RANDOM_API_KEY"
     steps:
@@ -192,7 +172,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.WEBSERVICES_PAT }}
           COMPOSER_AUTH_JSON: '{"github-oauth": {"github.com": "${{ secrets.WEBSERVICES_PAT }}"}}'
         with:
-          php-version: ${{ needs.detect_php_version.outputs.php_version }}
+          php-version: ${{ needs.check_php_context.outputs.php_version }}
           tools: composer, phpunit
           extensions: mbstring, json, dom
       - name: Configure and Install Composer dependencies
@@ -200,7 +180,7 @@ jobs:
           composer config --global github-protocols https
           composer install --prefer-dist --no-interaction --no-progress
       - name: Laravel Setup
-        if: needs.check_config_files.outputs.laravel == 'true'
+        if: needs.check_php_context.outputs.laravel == 'true'
         run: |
           cp .env.example .env
           php artisan key:generate --force
