@@ -103,3 +103,30 @@ RUN printf 'commit: %s\nbuilt:  %s\nrun:    %s\n' \
 Deployment is deliberately not part of this workflow — it differs too much
 between apps (terraform pin, `az` sitecontainer update, restart-to-pull) to be
 worth a pile of conditional inputs.
+
+## static-web-app-deploy.yml
+
+Uploads a plain HTML site to an Azure Static Web App. A push to `main` updates
+the live site. A pull request gets a temporary preview URL, removed when the PR
+closes. Start new sites from
+[static-site-template](https://github.com/Global4Communications/static-site-template),
+which already has this caller.
+
+```yaml
+name: Deploy to Azure Static Web Apps
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches: [main]
+
+jobs:
+  deploy:
+    uses: Global4Communications/org-workflows/.github/workflows/static-web-app-deploy.yml@main
+    secrets:
+      token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+```
+
+`app_location` defaults to `src`.
